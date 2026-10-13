@@ -143,7 +143,7 @@ class EtherCATSoC(SoCMini):
         # LiteScope: Анализатор внутренних сигналов для отладки EtherCAT
         # ===================================================================
         analyzer_signals = {
-            # Группа 0: Тракт данных PU (для отладки WKC)
+            # Группа 0: тракт данных PU (как было)
             0: [
                 self.esc_core.pu.sink.valid,
                 self.esc_core.pu.sink.ready,
@@ -159,21 +159,35 @@ class EtherCATSoC(SoCMini):
                 self.esc_core.pu.dg_addr_reg,
                 self.esc_core.pu.mem_logical_access_ok,
                 self.esc_core.pu.mem_logical_would_hit,
-                self.esc_core.mem.sii.address_read,
-                self.esc_core.mem.sii.data_read,
-                self.esc_core.mem.sii.hit,
                 self.esc_core.mem.address_read,
                 self.esc_core.mem.data_read,
-                #self.esc_core.mem.hit,
+                self.esc_core.mem.write_en,
+                self.esc_core.mem.sii.address_read,     # адрес, который читает PU
+                self.esc_core.mem.sii.data_read,        # что SII отдаёт
+                self.esc_core.mem.sii.hit,              # SII перехватил адрес
+                self.esc_core.mem.sii.address_write,    # адрес записи
+                self.esc_core.mem.sii.data_write,       # данные записи
+                self.esc_core.mem.sii.write_en,         # строб записи
+                self.esc_core.mem.sii.dgram_end,        # конец датаграммы
+                self.esc_core.mem.sii_hit_q,            # ← если экспортирован
+                self.esc_core.mem.sii_data_q,           # ← если экспортирован
+                self.esc_core.mem.sii.busy,             # FSM занята
+                self.esc_core.mem.sii.start_read,       # команда чтения
+                self.esc_core.mem.sii.word_idx,         # 0..3 — какое слово
+                self.esc_core.mem.sii.base_addr,        # зафиксированный адрес
+                self.esc_core.mem.sii.eeprom_addr,      # адрес от мастера
+                self.esc_core.mem.sii.data_buffer, # старшие байты, чтобы видеть
+                                                        # заполнение по мере чтения
+
             ],
-            # Группа 1: Интерфейс FMMU
+            # Группа 1: FMMU
             1: [
                 self.esc_core.mem.fmmu.any_hit,
                 self.esc_core.mem.fmmu.any_would_hit,
                 self.esc_core.mem.fmmu.final_phys_addr,
                 self.esc_core.mem.fmmu.access_ok,
             ],
-            # Группа 2: Интерфейс SyncManager
+            # Группа 2: SyncManager
             2: [
                 self.esc_core.mem.sm.any_ecat_sel,
                 self.esc_core.mem.sm.final_ecat_bram_addr,
@@ -181,7 +195,6 @@ class EtherCATSoC(SoCMini):
                 self.esc_core.mem.sm.ecat_read_en,
             ]
         }
-
         self.submodules.analyzer = LiteScopeAnalyzer(
             groups       = analyzer_signals,
             depth        = 2048,          # Глубина захвата (можно уменьшить, если не хватает BRAM)

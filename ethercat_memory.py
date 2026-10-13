@@ -242,8 +242,8 @@ class ESCMemory(Module):
             sm_sel_q    = in_window(self.address_read, sm_start, sm_end)
             sm_data_q   = sm.ecat_reg_read_data
             bram_sel_q  = Signal(reset=1)
-            sii_hit_q  = sii.hit
-            sii_data_q = sii.data_read
+            self.sii_hit_q = sii_hit_q  = sii.hit
+            self.sii_data_q = sii_data_q = sii.data_read
         else:
             # BRAM: bram_read_addr_reg (1) + rd_port sync (1) = 2 такта
             # regs/fmmu/sm комбинаторны от address_read => нужны ДВЕ ступени
@@ -253,8 +253,8 @@ class ESCMemory(Module):
             fmmu_data_d1 = Signal(8);    fmmu_data_q = Signal(8)
             sm_sel_d1    = Signal();     sm_sel_q    = Signal()
             sm_data_d1   = Signal(8);    sm_data_q   = Signal(8)
-            sii_hit_d1  = Signal();  sii_hit_q  = Signal()
-            sii_data_d1 = Signal(8); sii_data_q = Signal(8)
+            sii_hit_d1  = Signal();  self.sii_hit_q = sii_hit_q = Signal()
+            sii_data_d1 = Signal(8); self.sii_data_q = sii_data_q = Signal(8)
 
             self.sync += [
                 If(self.transfer,
@@ -287,9 +287,8 @@ class ESCMemory(Module):
                 Mux(fmmu_sel_q,  fmmu_data_q,
                 Mux(sm_sel_q,    sm_data_q,
                     rd_port.dat_r))))),
-            self.logical_data_read.eq(rd_port.dat_r),
-            ]
-
+           self.logical_data_read.eq(rd_port.dat_r),
+           ]
 
         # Регистры: подключение
         self.comb += [

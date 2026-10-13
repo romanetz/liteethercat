@@ -200,10 +200,20 @@ class EtherCATSlavePU(Module):
             # BRAM имеет 2 цикла задержки (bram_read_addr_reg + sync порт).
             # Байт 0 нужно начать читать в DG_IRQ[0] — до подтверждения cmd_match.
             # cmd_is_logical и cmd_is_read уже корректны (установлены в DG_IDX).
+            #early_rd_strobe.eq(
+            #    cmd_is_logical & cmd_is_read & (dg_len != 0) &
+            #    fsm.ongoing("DG_IRQ") & (eth_byte_count == 0)
+            #)
             early_rd_strobe.eq(
-                cmd_is_logical & cmd_is_read & (dg_len != 0) &
-                fsm.ongoing("DG_IRQ") & (eth_byte_count == 0)
+                cmd_is_read & (dg_len != 0) &
+                fsm.ongoing("DG_IRQ") & (eth_byte_count == 0) &
+                cmd_match
             ),
+
+            #early_rd_strobe.eq(
+            #    cmd_is_read & (dg_len != 0) &
+            #    fsm.ongoing("DG_LEN") & (eth_byte_count == 1)   # последний такт DG_LEN
+            #),
             rd_strobe.eq(
                 (cmd_match & cmd_is_read & (dg_len != 0) &
                 (fsm.ongoing("DG_IRQ") | fsm.ongoing("DG_DATA"))) |

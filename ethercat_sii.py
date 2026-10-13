@@ -36,7 +36,7 @@ class SIIInterface(Module):
         if eeprom_words is None:
             # заглушка: пустой EEPROM
             eeprom_words = [0xFFFF] * 16
-        #eeprom_words = load_sii_bin("./siitool/examples/colorlight4fmmu.bin")
+        eeprom_words = load_sii_bin("./siitool/examples/colorlight4fmmu.bin")
         # округляем глубину вверх до степени двойки
         depth = 1
         while depth < len(eeprom_words):
@@ -44,7 +44,7 @@ class SIIInterface(Module):
         eeprom_words = list(eeprom_words) + [0xFFFF] * (depth - len(eeprom_words))
         self.eeprom_depth = depth
         aw = log2_int(depth)
-        print (f'SII address width:{aw} bits')
+        print (f'SII address width:{aw} bits, total {len(eeprom_words)} bytes')
         #aw = 8
         # ------------------------------------------------------------------
         # Регистровый интерфейс (как у ESCRegisterFile)
@@ -81,18 +81,18 @@ class SIIInterface(Module):
         err_device_info  = Signal()               # bit12
         err_command      = Signal()               # bit13
         err_write        = Signal()               # bit14
-        busy             = Signal()               # bit15
+        self.busy = busy = Signal()               # bit15
 
         self.config      = Signal(16)             # 0x0500-0x0501 (PDI access, не используем)
         self.eeprom_addr = Signal(32)             # 0x0504-0x0507
         self.data_buffer = Signal(64)             # 0x0508-0x050F
 
-        start_read   = Signal()
-        start_write  = Signal()
-        start_reload = Signal()
+        self.start_read   = start_read =  Signal()
+        self.start_write  = start_write = Signal()
+        self.start_reload = start_reload = Signal()
 
-        word_idx  = Signal(2)
-        n_words   = Signal(3)                     # 2 или 4 в зависимости от read size
+        self.word_idx  = word_idx = Signal(2)
+        self.n_words   = n_words = Signal(3)                     # 2 или 4 в зависимости от read size
 
         self.comb += n_words.eq(Mux(cfg_read_size, 4, 2))  # всегда отдаём 4 слова
         # ------------------------------------------------------------------
@@ -141,7 +141,7 @@ class SIIInterface(Module):
             0x050F: self.data_read.eq(self.data_buffer[56:64]),
             "default": self.data_read.eq(0x00),
         })
-
+        self.dgram_end_d = dgram_end_d = Signal()
         # ------------------------------------------------------------------
         # Запись регистров
         # ------------------------------------------------------------------
@@ -149,7 +149,7 @@ class SIIInterface(Module):
             start_read.eq(0),
             start_write.eq(0),
             start_reload.eq(0),
-
+            dgram_end_d.eq(self.dgram_end),
             If(self.write_en,
                 Case(self.address_write, {
                     0x0500: self.config[0:8].eq(self.data_write),
@@ -165,9 +165,9 @@ class SIIInterface(Module):
                     # старший байт control: КОМАНДЫ (биты 8,9,10 слова)
                     0x0503: [
                         If(~busy,
-                            If(self.data_write[0], start_read.eq(1)),    # bit8  Read
-                            If(self.data_write[1], start_write.eq(1)),   # bit9  Write
-                            If(self.data_write[2], start_reload.eq(1)),  # bit10 Reload
+                            If(self.data_write[0], cmd_pending_read.eq(1)),    # bit8  Read
+                            If(self.data_write[1], cmd_pending_write.eq(1)),   # bit9  Write
+                            If(self.data_write[2], cmd_pending_reload.eq(1)),  # bit10 Reload
                         )
                     ],
 
@@ -179,7 +179,8 @@ class SIIInterface(Module):
             ),
             # запускаем только когда вся датаграмма отписана —
             # к этому моменту eeprom_addr уже актуален
-            If(self.dgram_end,
+
+            If(self.dgram_end_d,
                 If(cmd_pending_read,   start_read.eq(1)),
                 If(cmd_pending_write,  start_write.eq(1)),
                 If(cmd_pending_reload, start_reload.eq(1)),
@@ -195,7 +196,8 @@ class SIIInterface(Module):
         self.comb += self.mem_port.adr.eq(
             (self.eeprom_addr[0:aw] + word_idx)[0:aw]
         )
-        base_addr = Signal(aw)
+        self.base_addr = base_addr = Signal(aw)
+        self.comb += self.mem_port.adr.eq(base_addr + word_idx)
         # ------------------------------------------------------------------
         # FSM выборки: 4 слова, латентность памяти 1 такт
         #   SETUP   — адрес выставлен комбинаторно
@@ -253,7 +255,7 @@ class SIIInterface(Module):
             )
         )
 
-        self.comb += self.mem_port.adr.eq(base_addr + word_idx)
+
 
 
 # ----------------------------------------------------------------------
@@ -277,7 +279,7 @@ if __name__ == "__main__":
     #)
     eeprom_words = load_sii_bin("./siitool/examples/colorlight4fmmu.bin")
     sii = SIIInterface(eeprom_words)
-    print(verilog.convert(sii, ios={
-        sii.address_read, sii.data_read, sii.hit,
-        sii.address_write, sii.data_write, sii.write_en,
-    }))
+    #print(verilog.convert(sii, ios={
+    #    sii.address_read, sii.data_read, sii.hit,
+    #    sii.address_write, sii.data_write, sii.write_en,
+    #}))
