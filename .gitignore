@@ -1,0 +1,31 @@
+# LiteX build artifacts
+build/
+build_*/
+*.json
+*.csv
+*.pyc
+__pycache__/
+*.vcd
+*.fst
+*.gtkw
+*.pdf
+*.zip
+*.gz
+*.tar.gz
+*.PDF
+
+# Vivado/Quartus/Yosys
+*.bit
+*.svf
+*.bin
+!siitool/examples/*.bin
+*.log
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# venv
+venv/
+.venv/
